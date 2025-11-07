@@ -1,0 +1,26 @@
+const mongoose = require("mongoose");
+
+const userSchema = new mongoose.Schema(
+  {
+    fullname: { type: String, required: true },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+        "Please enter a valid email address",
+      ],
+    },
+    password: { type: String, required: true, minlength: 6 },
+    avatar: { type: String, default: "" },
+    role: { type: String, enum: ["user", "admin", "jurry"], default: "user" },
+    expoPushToken: { type: String, default: "" },
+    expoPlatform: { type: String, default: "" }, // 🆕 Android / iOS / web
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.models.User || mongoose.model("User", userSchema);

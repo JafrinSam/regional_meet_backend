@@ -28,7 +28,7 @@ const port = process.env.PORT || 3000;
     app.use("/api", require("./routes/index"));
     server.listen(port, "0.0.0.0", () => {
       console.log(
-        `☑️   Regional Meet server running on http://127.0.0.1:${port}`
+        `☑️  Regional Meet server running on http://127.0.0.1:${port}`
       );
       console.log("=".repeat(process.stdout.columns || 80));
     });

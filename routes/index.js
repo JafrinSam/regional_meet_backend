@@ -2,13 +2,13 @@
 
 const express = require("express");
 const router = express.Router();
+const authMiddleware = require("../middleware/authMiddleware");
 
 router.get("/", (req, res) =>
   res.json({ ok: true, service: "Reginal Meet Server" })
 );
 
-// router.use("/login", require("./authRoutes"));
-// router.use("/messages", require("./messages"));
-// router.post("/auth", Auth_MiddleWare(), Authenticator);
+router.use("/auth", require("./authRoutes"));
+router.use("/admin", require("./admin"));
 
 module.exports = router;

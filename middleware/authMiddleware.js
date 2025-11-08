@@ -23,7 +23,7 @@ const authMiddleware = (options = {}) => {
 
       // Attach user to request
       req.user = user;
-
+      console.log("Authenticated user:", user, req.body.location);
       // If route is admin-only, check user role
       if (options.adminOnly && user.role !== "admin") {
         return res.status(403).json({ message: "Access denied: Admins only" });

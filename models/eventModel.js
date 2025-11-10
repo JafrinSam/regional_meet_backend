@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const eventSchema = new mongoose.Schema({
   name: {
@@ -36,6 +36,13 @@ const eventSchema = new mongoose.Schema({
       ref: "User",
     },
   ],
+  // Renamed 'Registration' to 'registration' for consistency
+  registration: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
   category: {
     type: String,
     enum: ["conference", "meetup", "workshop", "webinar", "other"],
@@ -50,4 +57,5 @@ const eventSchema = new mongoose.Schema({
 
 const Event = mongoose.model("Event", eventSchema);
 
-export default Event;
+// Use module.exports instead of export default
+module.exports = Event;

@@ -5,7 +5,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 const { getProfile } = require("../controllers/Auth/profile");
 
 const router = express.Router();
-router.post("/profile", authMiddleware(), getProfile);
+router.post("/profile", authMiddleware({ logLocation: true }), getProfile);
 
 router.post("/register", registerUser);
 router.post("/login", loginUser);

@@ -16,7 +16,17 @@ const userSchema = new mongoose.Schema(
     },
     password: { type: String, required: true, minlength: 6 },
     avatar: { type: String, default: "" },
-    role: { type: String, enum: ["user", "admin", "jurry"], default: "user" },
+    role: {
+      type: String,
+      enum: ["user", "admin", "jurry", "organiser", "host", "supervisor"],
+      default: "user",
+    },
+    subrole: {
+      type: String,
+      default: "",
+      enum: ["", "faculty", "poster", "vistor", "exhibitor"],
+    },
+    isVerified: { type: Boolean, default: false },
     expoPushToken: { type: String, default: "" },
     expoPlatform: { type: String, default: "" }, // 🆕 Android / iOS / web
   },

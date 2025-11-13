@@ -18,13 +18,27 @@ const userSchema = new mongoose.Schema(
     avatar: { type: String, default: "" },
     role: {
       type: String,
-      enum: ["user", "admin", "jurry", "organiser", "host", "supervisor"],
+      enum: [
+        "user",
+        "admin",
+        "superadmin",
+        "jurry",
+        "organiser",
+        "host",
+        "supervisor",
+      ],
       default: "user",
     },
     subrole: {
       type: String,
+
       default: "",
       enum: ["", "faculty", "poster", "vistor", "exhibitor"],
+    },
+    host: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Host",
+      default: null,
     },
     isVerified: { type: Boolean, default: false },
     expoPushToken: { type: String, default: "" },

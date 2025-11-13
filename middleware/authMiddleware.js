@@ -1,21 +1,38 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
-// *** IMPORTANT: Assume you import your LocationLog model here ***
 const LocationLog = require("../models/locationLogModel");
 
 const REFRESH_THRESHOLD_SECONDS = 7 * 24 * 60 * 60;
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || "your_jwt_secret", {
+const generateToken = (id) =>
+  jwt.sign({ id }, process.env.JWT_SECRET || "your_jwt_secret", {
     expiresIn: process.env.JWT_LIFETIME || "30d",
   });
+
+// Role hierarchy (higher number = more privileges)
+const ROLE_LEVELS = {
+  superadmin: 100,
+  admin: 80,
+  supervisor: 60,
+  host: 50,
+  organiser: 40,
+  jurry: 30,
+  user: 10,
 };
 
+const getLevel = (role) =>
+  ROLE_LEVELS[String(role || "user").toLowerCase()] || 0;
+
 const authMiddleware = (options = {}) => {
+  // options:
+  //  - adminOnly (legacy boolean)
+  //  - requiredRole (string)          => only users with that exact role OR superadmin allowed
+  //  - minRole (string)               => users with role level >= minRole level OR superadmin allowed
+  //  - allowedRoles (array[string])   => any listed role OR superadmin allowed
+  //  - logLocation (boolean)
   return async (req, res, next) => {
     try {
       const authHeader = req.headers.authorization;
-
       if (!authHeader || !authHeader.startsWith("Bearer ")) {
         return res.status(401).json({ message: "No token provided" });
       }
@@ -41,16 +58,12 @@ const authMiddleware = (options = {}) => {
       if (timeUntilExpiry < REFRESH_THRESHOLD_SECONDS) {
         newToken = generateToken(user.id);
         console.log("Token refreshed for user:", user.id);
-      } // ---------------------------------------------------- // 1. LOCATION LOGGING LOGIC - NOW CONDITIONAL // ----------------------------------------------------
+      }
 
-      // Only execute logging if the logLocation option is explicitly set to true
       if (options.logLocation) {
         const locationData = req.body.location;
-
         if (locationData && locationData.latitude && locationData.longitude) {
           try {
-            // Log the location asynchronously without blocking the main request
-            // **UNCOMMENT THIS BLOCK ONCE LocationLog MODEL IS IMPORTED**
             LocationLog.create({
               user: user._id,
               latitude: locationData.latitude,
@@ -66,19 +79,68 @@ const authMiddleware = (options = {}) => {
             );
           }
         }
-      } // ---------------------------------------------------- // Attach user to request
+      }
+
       req.user = user;
-      console.log(user);
 
       if (newToken) {
         res.setHeader("X-New-Token", newToken);
-      } // Check admin role
-
-      if (options.adminOnly && user.role !== "admin") {
-        return res.status(403).json({ message: "Access denied: Admins only" });
       }
 
-      next();
+      const userRole = String(user.role || "user").toLowerCase();
+      const userLevel = getLevel(userRole);
+
+      // Superadmin bypass: always allowed to access and control everything
+      const isSuperadmin = userRole === "superadmin";
+
+      // legacy adminOnly option
+      if (options.adminOnly) {
+        if (!(isSuperadmin || userRole === "admin")) {
+          return res
+            .status(403)
+            .json({ message: "Access denied: Admins only" });
+        }
+        return next();
+      }
+
+      // requiredRole: exact match OR superadmin
+      if (options.requiredRole) {
+        const required = String(options.requiredRole).toLowerCase();
+        if (!(isSuperadmin || userRole === required)) {
+          return res.status(403).json({
+            message: `Access denied: requires role '${required}'`,
+          });
+        }
+        return next();
+      }
+
+      // allowedRoles: array of roles OR superadmin
+      if (options.allowedRoles && Array.isArray(options.allowedRoles)) {
+        const lowered = options.allowedRoles.map((r) =>
+          String(r).toLowerCase()
+        );
+        if (!(isSuperadmin || lowered.includes(userRole))) {
+          return res.status(403).json({
+            message: `Access denied: requires one of [${lowered.join(", ")}]`,
+          });
+        }
+        return next();
+      }
+
+      // minRole: any user with role level >= minRole level OR superadmin
+      if (options.minRole) {
+        const min = String(options.minRole).toLowerCase();
+        const minLevel = getLevel(min);
+        if (!(isSuperadmin || userLevel >= minLevel)) {
+          return res.status(403).json({
+            message: `Access denied: requires minimum role '${min}'`,
+          });
+        }
+        return next();
+      }
+
+      // If no role-based restriction provided, allow by default
+      return next();
     } catch (error) {
       console.error("Auth error:", error);
       return res.status(401).json({ message: "Invalid or expired token" });

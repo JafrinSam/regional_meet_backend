@@ -197,6 +197,196 @@ eventSchema.statics.registerUser = async function (eventId, userId) {
   return eventToRegister;
 };
 
+eventSchema.statics.unregisterUser = async function (eventId, userId) {
+  const eventToUnregister = await this.findById(eventId);
+
+  if (!eventToUnregister) {
+    throw new Error("Event not found.");
+  }
+
+  const isRegistered = eventToUnregister.registrations.some((r) =>
+    r && typeof r.equals === "function"
+      ? r.equals(userId)
+      : r.toString() === userId.toString()
+  );
+
+  if (!isRegistered) {
+    throw new Error(
+      "Unregister failed: You are not registered for this event."
+    );
+  }
+
+  eventToUnregister.registrations = eventToUnregister.registrations.filter(
+    (r) =>
+      !(r && typeof r.equals === "function"
+        ? r.equals(userId)
+        : r.toString() === userId.toString())
+  );
+
+  if (Array.isArray(eventToUnregister.attendees)) {
+    eventToUnregister.attendees = eventToUnregister.attendees.filter(
+      (a) =>
+        !(a && typeof a.equals === "function"
+          ? a.equals(userId)
+          : a.toString() === userId.toString())
+    );
+  }
+
+  await eventToUnregister.save();
+
+  await RegisteredEvent.deleteMany({ user: userId, event: eventId });
+
+  return eventToUnregister;
+};
+
+/**
+ * [ADMIN] Force-registers a user for an event.
+ * - Bypasses all limits: visibility, max seats, and location checks.
+ * - Finds all conflicting timed events and auto-unregisters the user from them.
+ * - If user is in 'attendees' list, removes them.
+ * - Adds the user to the 'registrations' list.
+ *
+ * @param {string} eventId - The ID of the event to register for.
+ * @param {string} userId - The ID of the user registering.
+ * @returns {Promise<Object>} An object containing { event: Document, unregisteredFrom: string[], removedFromAttendees: boolean }
+ * @throws {Error} Throws an error if event not found or un-registration fails.
+ */
+eventSchema.statics.adminRegisterUser = async function (eventId, userId) {
+  // This array will hold the names of deleted events
+  const unregisteredEvents = [];
+  // This flag will track if the user was removed from attendees
+  let wasRemovedFromAttendees = false;
+
+  // 1. Find the event
+  const eventToRegister = await this.findById(eventId);
+  if (!eventToRegister) {
+    throw new Error("[Admin] Event not found.");
+  }
+
+  // 2. Check if user is already registered for this event
+  const isAlreadyRegistered = eventToRegister.registrations.some((r) =>
+    r && typeof r.equals === "function"
+      ? r.equals(userId)
+      : r.toString() === userId.toString()
+  );
+
+  if (isAlreadyRegistered) {
+    console.log(
+      `[Admin] User is already registered for '${eventToRegister.name}'.`
+    );
+    // Return the new object structure, even if no action was taken
+    return {
+      event: eventToRegister,
+      unregisteredFrom: unregisteredEvents, // Will be empty
+      removedFromAttendees: wasRemovedFromAttendees, // Will be false
+    };
+  }
+
+  // 3. Resolve Time Conflicts by un-registering from conflicting events
+  if (eventToRegister.startTime && eventToRegister.endTime) {
+    console.log(
+      `[Admin] New event '${eventToRegister.name}' is timed. Checking for conflicts...`
+    );
+
+    const thisStart = eventToRegister.startTime.getTime();
+    const thisEnd = eventToRegister.endTime.getTime();
+
+    const userRegisteredEvents = await RegisteredEvent.find({ user: userId })
+      .populate("event")
+      .exec();
+
+    for (const regEvent of userRegisteredEvents) {
+      const otherEvent = regEvent.event;
+
+      if (!otherEvent || !otherEvent.startTime || !otherEvent.endTime) {
+        continue;
+      }
+
+      const otherStart = otherEvent.startTime.getTime();
+      const otherEnd = otherEvent.endTime.getTime();
+
+      const isOverlap = otherStart < thisEnd && otherEnd > thisStart;
+
+      if (isOverlap) {
+        console.log(
+          `[Admin] Conflict found with '${otherEvent.name}'. Unregistering user...`
+        );
+        try {
+          await this.unregisterUser(otherEvent._id, userId);
+          console.log(
+            `[Admin] Successfully unregistered from '${otherEvent.name}'.`
+          );
+
+          unregisteredEvents.push(otherEvent.name);
+        } catch (unregError) {
+          console.error(
+            `[Admin] Failed to unregister from conflicting event '${otherEvent.name}'.`,
+            unregError
+          );
+          throw new Error(
+            `Failed to unregister from conflicting event: ${unregError.message}`
+          );
+        }
+      }
+    }
+  } else {
+    console.log(
+      `[Admin] New event '${eventToRegister.name}' is all-day. Skipping conflict check.`
+    );
+  }
+
+  // 4. --- NEW: Check and remove from 'attendees' if present ---
+  if (Array.isArray(eventToRegister.attendees)) {
+    // Find the index of the user in the attendees array
+    const attendeeIndex = eventToRegister.attendees.findIndex(
+      (attendeeId) =>
+        attendeeId &&
+        typeof attendeeId.equals === "function" &&
+        attendeeId.equals(userId)
+    );
+
+    if (attendeeIndex > -1) {
+      console.log(`[Admin] User was in 'attendees' list. Removing...`);
+      eventToRegister.attendees.splice(attendeeIndex, 1); // Remove user from array
+      wasRemovedFromAttendees = true;
+    }
+  }
+
+  // 5. All checks bypassed/resolved. Add the user to 'registrations' and save.
+  console.log(
+    `[Admin] Adding user to 'registrations' for '${eventToRegister.name}'...`
+  );
+  eventToRegister.registrations.push(userId);
+
+  try {
+    await eventToRegister.save();
+  } catch (saveError) {
+    console.error(
+      `[Admin] Failed to save event after adding registration:`,
+      saveError
+    );
+    throw new Error(`Event save failed: ${saveError.message}`);
+  }
+
+  // 6. Create the registration document (if it doesn't exist)
+  await RegisteredEvent.updateOne(
+    { user: userId, event: eventId },
+    { $setOnInsert: { user: userId, event: eventId } }, // Only create if it doesn't exist
+    { upsert: true }
+  );
+
+  console.log(
+    `[Admin] User successfully registered for '${eventToRegister.name}'.`
+  );
+
+  // --- MODIFIED RETURN ---
+  // Return the event, the list of events that were unregistered, and attendee status
+  return {
+    event: eventToRegister,
+    unregisteredFrom: unregisteredEvents,
+    removedFromAttendees: wasRemovedFromAttendees,
+  };
+};
 const Event = mongoose.model("Event", eventSchema);
 
 module.exports = Event;

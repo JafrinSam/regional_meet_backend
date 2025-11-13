@@ -68,7 +68,7 @@ const authMiddleware = (options = {}) => {
         }
       } // ---------------------------------------------------- // Attach user to request
       req.user = user;
-      // console.log(user, req.body.location);
+      console.log(user);
 
       if (newToken) {
         res.setHeader("X-New-Token", newToken);

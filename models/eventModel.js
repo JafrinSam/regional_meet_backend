@@ -125,9 +125,9 @@ eventSchema.statics.registerUser = async function (eventId, userId) {
 
   // 3. Normalize the event's date to midnight
   // This is to match the 'eventDate' field in the RegisteredLocation schema
-  const eventDay = new Date(eventToRegister.startTime);
+  const eventDay = new Date(eventToRegister.date);
   if (isNaN(eventDay.getTime())) {
-    throw new Error("Registration failed: The event has an invalid start time.");
+    throw new Error("Registration failed: The event has an invalid date.");
   }
   eventDay.setHours(0, 0, 0, 0);
 
@@ -144,6 +144,7 @@ eventSchema.statics.registerUser = async function (eventId, userId) {
       `Registration failed: You must register your primary location for this date (${eventDay.toDateString()}) before registering for an event.`
     );
   }
+  console.log(eventToRegister.location, userLocationForDay.eventLocation);
 
   // 6. Compare the event's location to the user's registered location
   // We use .equals() to compare Mongoose ObjectIds
@@ -156,18 +157,31 @@ eventSchema.statics.registerUser = async function (eventId, userId) {
   // --- END OF NEW LOCATION CHECK ---
 
   // 7. Check for Time Conflicts (Find other events user is registered for)
-  // An overlap exists if: (Event1.Start < Event2.End) AND (Event1.End > Event2.Start)
-  const conflictingEvent = await this.findOne({
-    registrations: userId, // Find events user is already in
-    _id: { $ne: eventId }, // Exclude this current event
-    startTime: { $lt: eventToRegister.endTime }, // The other event starts *before* this one ends
-    endTime: { $gt: eventToRegister.startTime }, // The other event ends *after* this one starts
-  });
 
-  if (conflictingEvent) {
-    throw new Error(
-      `Registration failed: This event's time conflicts with '${conflictingEvent.name}'.`
-    );
+  const userRegisteredEvents = await RegisteredEvent.find({ user: userId })
+    .populate("event")
+    .exec();
+
+  for (const regEvent of userRegisteredEvents) {
+    const otherEvent = regEvent.event;
+
+    // Skip if no event or missing times, or it's the same event
+    if (!otherEvent || !otherEvent.startTime || !otherEvent.endTime) continue;
+    if (otherEvent._id.equals(eventToRegister._id)) continue;
+
+    const otherStart = otherEvent.startTime.getTime();
+    const otherEnd = otherEvent.endTime.getTime();
+    const thisStart = eventToRegister.startTime.getTime();
+    const thisEnd = eventToRegister.endTime.getTime();
+
+    // Treat end times as exclusive: if otherEnd === thisStart (or otherStart === thisEnd) it's NOT a conflict
+    const isOverlap = otherStart < thisEnd && otherEnd > thisStart;
+
+    if (isOverlap) {
+      throw new Error(
+        `Registration failed: Time conflict with another registered event (${otherEvent.name}).`
+      );
+    }
   }
 
   // 8. All checks passed! Add the user and save.

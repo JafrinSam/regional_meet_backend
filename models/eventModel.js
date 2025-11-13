@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
-// --- ADD THIS IMPORT ---
-// Assumes the file is in the same directory. Update path if needed.
 const RegisteredLocation = require("./registeredLocationModel");
+const RegisteredEvent = require("./registeredEventsModel");
 
 const eventSchema = new mongoose.Schema({
   name: {
@@ -29,11 +28,9 @@ const eventSchema = new mongoose.Schema({
   },
   startTime: {
     type: Date,
-    required: [true, "Event start time is required"],
   },
   endTime: {
     type: Date,
-    required: [true, "Event end time is required"],
     validate: {
       validator: function (value) {
         return this.startTime < value;
@@ -129,6 +126,9 @@ eventSchema.statics.registerUser = async function (eventId, userId) {
   // 3. Normalize the event's date to midnight
   // This is to match the 'eventDate' field in the RegisteredLocation schema
   const eventDay = new Date(eventToRegister.startTime);
+  if (isNaN(eventDay.getTime())) {
+    throw new Error("Registration failed: The event has an invalid start time.");
+  }
   eventDay.setHours(0, 0, 0, 0);
 
   // 4. Find the user's *active* registered location for that specific day
@@ -173,6 +173,12 @@ eventSchema.statics.registerUser = async function (eventId, userId) {
   // 8. All checks passed! Add the user and save.
   eventToRegister.registrations.push(userId);
   await eventToRegister.save();
+
+  // 9. Create a registration document
+  await RegisteredEvent.create({
+    user: userId,
+    event: eventId,
+  });
 
   return eventToRegister;
 };

@@ -8,7 +8,7 @@ const registerEventSchema = new mongoose.Schema({
   },
   event: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "EventLocation",
+    ref: "Event",
     required: true,
   },
   attended: { type: Boolean, default: false },
@@ -23,3 +23,4 @@ const registerEventSchema = new mongoose.Schema({
 registerEventSchema.index({ user: 1, event: 1 }, { unique: true });
 
 module.exports = mongoose.model("RegisteredEvent", registerEventSchema);
+

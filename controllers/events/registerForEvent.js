@@ -1,28 +1,23 @@
-// Example in your registerForEvents.js
+const Event = require("../../models/eventModel");
 
-const registeredEvents = require("../models/registeredregisteredEventssModel");
-
-exports.registerForregisteredEvents = async (req, res) => {
+const registerForEvent = async (req, res) => {
   try {
-    const { registeredEventsId } = req.params;
-    const userId = req.user.id; // Assuming you have user auth
+    const { eventId } = req.params;
+    const userId = req.user._id;
 
-    // The 'registerUser' method handles all logic
-    const updatedregisteredEvents = await registeredEvents.registerUser(
-      registeredEventsId,
-      userId
-    );
+    if (!eventId) {
+      return res.status(400).json({ message: "Event ID is required." });
+    }
+
+    const updatedEvent = await Event.registerUser(eventId, userId);
 
     res.status(200).json({
-      success: true,
-      message: "Successfully registered for the registeredEvents!",
-      data: updatedregisteredEvents,
+      message: "Successfully registered for the event.",
+      event: updatedEvent,
     });
   } catch (error) {
-    // This will catch errors from 'registerUser' (e.g., "registeredEvents is full.")
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(400).json({ message: error.message });
   }
 };
+
+module.exports = registerForEvent;

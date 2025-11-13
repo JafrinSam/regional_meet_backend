@@ -3,14 +3,14 @@ const router = express.Router();
 const authMiddleware = require("../../middleware/authMiddleware");
 
 // Import all admin-specific route modules
-const locationRoutes = require("./LocationRoutes");
+const locationRoutes = require("./locationRoutes");
 
 // Apply admin auth middleware to all admin routes
 router.use(authMiddleware({ adminOnly: true }));
 
 // Mount admin sub-routes
 router.use("/locations", locationRoutes);
-
+router.use("/events", require("./eventRoutes"));
 // Example admin test route
 router.get("/", (req, res) => {
   res.json({

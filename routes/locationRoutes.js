@@ -16,6 +16,9 @@ const {
   getAllLocationInfo,
 } = require("../controllers/locations/getallLocationInfo"); // Corrected path
 
+const {
+  getNearbyLocations,
+} = require("../controllers/locations/getNearbyLocation");
 const router = express.Router();
 
 // --- FIX 3: Use the imported function variable ---
@@ -28,5 +31,5 @@ router.get(
 // Other routes
 router.get("/getregisteredlocations", authMiddleware(), getRegisteredLocations);
 router.post("/registerLocation", authMiddleware(), registerOrUpdateLocation);
-
+router.post("/nearby", authMiddleware(), getNearbyLocations);
 module.exports = router;

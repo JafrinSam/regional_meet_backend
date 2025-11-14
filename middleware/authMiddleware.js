@@ -140,7 +140,7 @@ const authMiddleware = (options = {}) => {
         return next();
       }
       console.log(req.user);
-
+      console.log(token);
       // If no role-based restriction provided, allow by default
       return next();
     } catch (error) {

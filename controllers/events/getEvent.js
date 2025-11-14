@@ -2,6 +2,7 @@
 // Import the necessary models
 // Import the necessary models
 const Event = require("../../models/eventModel"); // Path to your Event model
+const RegisteredLocation = require("../../models/registeredLocationModel");
 
 /**
  * Fetches ALL visible events and adds custom fields for the current user:
@@ -16,8 +17,34 @@ const getEvent = async (req, res, next) => {
   const userId = req.user._id;
 
   try {
-    // 1. Query for ALL visible events
-    const allEvents = await Event.find({ visible: true }) // Find all visible events
+    // Get today's date and normalize it to midnight for comparison
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+
+    // Find the user's earliest active registered location
+    const registeredLocationForToday = await RegisteredLocation.findOne({
+      user: userId,
+      status: "ACTIVE", // Only consider active registrations
+      eventDate: { $gte: today }, // Only consider registrations from today onwards
+    }).sort({ eventDate: 1 }); // Sort by date to get the earliest one
+
+    // If the user has no registered location for today, return an empty array
+    if (!registeredLocationForToday) {
+      return res.status(200).json({
+        success: true,
+        message: "No events found for your registered location.",
+        events: [],
+      });
+    }
+
+    // Extract the location ID from the registered location
+    const userLocationId = registeredLocationForToday.eventLocation;
+
+    // 1. Query for visible events at the user's registered location
+    const allEvents = await Event.find({
+      visible: true,
+      location: userLocationId, // Filter by the user's registered location
+    })
       // 2. Populate the referenced location details
       .populate("location")
       // 3. Sort the events by date (soonest first)
@@ -59,6 +86,11 @@ const getEvent = async (req, res, next) => {
         registered: isRegistered, // true or false
         remainingSeats: remainingSeats, // Add the calculated remaining seats
       };
+    });
+    console.log({
+      success: true,
+      message: "All events fetched successfully.",
+      events: formattedEvents, // Send the new formatted array
     });
 
     // 7. Return the list of formatted events

@@ -32,6 +32,7 @@ const authMiddleware = (options = {}) => {
   //  - logLocation (boolean)
   return async (req, res, next) => {
     try {
+      req.user = null;
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith("Bearer ")) {
         return res.status(401).json({ message: "No token provided" });
@@ -138,6 +139,7 @@ const authMiddleware = (options = {}) => {
         }
         return next();
       }
+      console.log(req.user);
 
       // If no role-based restriction provided, allow by default
       return next();

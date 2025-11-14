@@ -5,11 +5,15 @@ const eventLocationSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
-      trim: true, // e.g. "Tech Conference Hall"
+      trim: true,
     },
     address: {
-      type: String,
-      required: true, // e.g. "123 Main St, Trichy, India"
+      line1: { type: String, trim: true, default: "" },
+      line2: { type: String, trim: true, default: "" },
+      city: { type: String, trim: true, default: "" },
+      state: { type: String, trim: true, default: "" },
+      postalCode: { type: String, trim: true, default: "" },
+      country: { type: String, trim: true, default: "" },
     },
     city: {
       type: String,
@@ -43,4 +47,6 @@ const eventLocationSchema = new mongoose.Schema(
 // Create a geospatial index for location-based queries
 eventLocationSchema.index({ location: "2dsphere" });
 
-module.exports = mongoose.models.EventLocation || mongoose.model("EventLocation", eventLocationSchema);
+module.exports =
+  mongoose.models.EventLocation ||
+  mongoose.model("EventLocation", eventLocationSchema);

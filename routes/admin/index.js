@@ -11,6 +11,7 @@ router.use(authMiddleware({ adminOnly: true }));
 // Mount admin sub-routes
 router.use("/locations", locationRoutes);
 router.use("/events", require("./eventRoutes"));
+router.use("/hosts", require("./hostRoutes"));
 // Example admin test route
 router.get("/", (req, res) => {
   res.json({

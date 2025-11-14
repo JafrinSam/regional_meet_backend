@@ -10,6 +10,8 @@ router.get("/", (req, res) =>
 
 router.use("/auth", require("./authRoutes"));
 router.use("/admin", require("./admin"));
+router.use("/supervisor", require("./supervisor"));
+router.use("/host", require("./host"));
 router.use("/locations", require("./locationRoutes"));
 router.use("/events", require("./eventRoutes"));
 module.exports = router;

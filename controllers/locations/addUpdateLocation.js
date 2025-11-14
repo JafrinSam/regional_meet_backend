@@ -2,8 +2,17 @@ const EventLocation = require("../../models/eventLocations");
 
 const addUpdateLocation = async (req, res) => {
   try {
-    const { _id, name, address, city, state, country, latitude, longitude } =
-      req.body;
+    const {
+      _id,
+      name,
+      address,
+      city,
+      state,
+      country,
+      latitude,
+      longitude,
+      range,
+    } = req.body;
 
     if (_id) {
       // If _id is provided, attempt to update the existing location
@@ -12,6 +21,7 @@ const addUpdateLocation = async (req, res) => {
         {
           name,
           address,
+          range,
           city,
           state,
           country,
@@ -23,12 +33,10 @@ const addUpdateLocation = async (req, res) => {
       if (!updatedLocation) {
         return res.status(404).json({ message: "Location not found." });
       }
-      return res
-        .status(200)
-        .json({
-          message: "Event location updated successfully",
-          data: updatedLocation,
-        });
+      return res.status(200).json({
+        message: "Event location updated successfully",
+        data: updatedLocation,
+      });
     }
 
     // If no _id is provided, create a new location
@@ -37,6 +45,7 @@ const addUpdateLocation = async (req, res) => {
       address,
       city,
       state,
+      range,
       country,
       location: { type: "Point", coordinates: [longitude, latitude] },
     });

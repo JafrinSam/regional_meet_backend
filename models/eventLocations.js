@@ -28,6 +28,11 @@ const eventLocationSchema = new mongoose.Schema(
       required: true,
       default: "India",
     },
+    range: {
+      type: Number,
+      required: true,
+      default: 50,
+    },
     location: {
       type: {
         type: String,

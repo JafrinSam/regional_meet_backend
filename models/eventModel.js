@@ -87,6 +87,11 @@ const eventSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  host: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Host",
+    required: true,
+  },
 });
 
 /**

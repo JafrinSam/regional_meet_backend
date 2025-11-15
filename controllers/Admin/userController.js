@@ -1,170 +1,108 @@
 const User = require('../../models/userModel');
-const bcrypt = require('bcryptjs');
 
-// @desc    Get all users
-// @route   GET /api/admin/users
-// @access  Superadmin
+// Get all users
 const getAllUsers = async (req, res) => {
-    try {
-        const users = await User.find({}).select('-password');
-        res.status(200).json(users);
-    } catch (error) {
-        console.error("Error getting all users:", error);
-        res.status(500).json({ message: "Server error" });
-    }
+  try {
+    const users = await User.find({}).select('-password');
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching users', error: error.message });
+  }
 };
 
-// @desc    Get user by ID
-// @route   GET /api/admin/users/:id
-// @access  Superadmin
+// Get a single user by ID
 const getUserById = async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id).select('-password');
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-        res.status(200).json(user);
-    } catch (error) {
-        console.error("Error getting user by ID:", error);
-        res.status(500).json({ message: "Server error" });
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching user', error: error.message });
+  }
 };
 
-// @desc    Create a new user
-// @route   POST /api/admin/users
-// @access  Superadmin
+// Create a new user
 const createUser = async (req, res) => {
-    try {
-        const { fullname, email, password, avatar, role, subrole, host, isVerified, expoPushToken, expoPlatform } = req.body;
+  try {
+    const { fullname, email, password, role } = req.body;
 
-        if (!fullname || !email || !password) {
-            return res.status(400).json({ message: "Please enter all required fields: fullname, email, password" });
-        }
-
-        const userExists = await User.findOne({ email });
-        if (userExists) {
-            return res.status(400).json({ message: "User with that email already exists" });
-        }
-
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        const user = await User.create({
-            fullname,
-            email,
-            password: hashedPassword,
-            avatar,
-            role: role || 'user', // Default to 'user' if not provided
-            subrole,
-            host,
-            isVerified,
-            expoPushToken,
-            expoPlatform
-        });
-
-        if (user) {
-            res.status(201).json({
-                _id: user._id,
-                fullname: user.fullname,
-                email: user.email,
-                avatar: user.avatar,
-                role: user.role,
-                subrole: user.subrole,
-                host: user.host,
-                isVerified: user.isVerified,
-                expoPushToken: user.expoPushToken,
-                expoPlatform: user.expoPlatform
-            });
-        } else {
-            res.status(400).json({ message: "Invalid user data" });
-        }
-
-    } catch (error) {
-        console.error("Error creating user:", error);
-        res.status(500).json({ message: "Server error" });
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({ message: 'User already exists' });
     }
+
+    const user = new User({
+      fullname,
+      email,
+      password,
+      role,
+    });
+
+    await user.save();
+    res.status(201).json({
+      _id: user._id,
+      fullname: user.fullname,
+      email: user.email,
+      role: user.role,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error creating user', error: error.message });
+  }
 };
 
-// @desc    Update a user
-// @route   PUT /api/admin/users/:id
-// @access  Superadmin
+// Update a user
 const updateUser = async (req, res) => {
-    try {
-        const { fullname, email, password, avatar, role, subrole, host, isVerified, expoPushToken, expoPlatform } = req.body;
+  try {
+    const { fullname, email, role } = req.body;
+    const user = await User.findById(req.params.id);
 
-        const user = await User.findById(req.params.id);
-
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-
-        // Check if email is being changed to an already existing email by another user
-        if (email && email !== user.email) {
-            const emailExists = await User.findOne({ email });
-            if (emailExists && emailExists._id.toString() !== user._id.toString()) {
-                return res.status(400).json({ message: "Email already in use by another user" });
-            }
-        }
-
-        user.fullname = fullname || user.fullname;
-        user.email = email || user.email;
-        if (password) {
-            const salt = await bcrypt.genSalt(10);
-            user.password = await bcrypt.hash(password, salt);
-        }
-        user.avatar = avatar || user.avatar;
-        user.role = role || user.role;
-        user.subrole = subrole || user.subrole;
-        user.host = host || user.host;
-        user.isVerified = isVerified !== undefined ? isVerified : user.isVerified;
-        user.expoPushToken = expoPushToken || user.expoPushToken;
-        user.expoPlatform = expoPlatform || user.expoPlatform;
-
-        const updatedUser = await user.save();
-
-        res.status(200).json({
-            _id: updatedUser._id,
-            fullname: updatedUser.fullname,
-            email: updatedUser.email,
-            avatar: updatedUser.avatar,
-            role: updatedUser.role,
-            subrole: updatedUser.subrole,
-            host: updatedUser.host,
-            isVerified: updatedUser.isVerified,
-            expoPushToken: updatedUser.expoPushToken,
-            expoPlatform: updatedUser.expoPlatform
-        });
-
-    } catch (error) {
-        console.error("Error updating user:", error);
-        res.status(500).json({ message: "Server error" });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
+
+    user.fullname = fullname || user.fullname;
+    user.email = email || user.email;
+    user.role = role || user.role;
+
+    // If password is provided, it will be hashed by the pre-save middleware
+    if (req.body.password) {
+      user.password = req.body.password;
+    }
+
+    const updatedUser = await user.save();
+    res.json({
+      _id: updatedUser._id,
+      fullname: updatedUser.fullname,
+      email: updatedUser.email,
+      role: updatedUser.role,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating user', error: error.message });
+  }
 };
 
-// @desc    Delete a user
-// @route   DELETE /api/admin/users/:id
-// @access  Superadmin
+// Delete a user
 const deleteUser = async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id);
+  try {
+    const user = await User.findById(req.params.id);
 
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-
-        await user.deleteOne();
-        res.status(200).json({ message: "User removed" });
-
-    } catch (error) {
-        console.error("Error deleting user:", error);
-        res.status(500).json({ message: "Server error" });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
+
+    await user.remove();
+    res.json({ message: 'User removed' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting user', error: error.message });
+  }
 };
 
 module.exports = {
-    getAllUsers,
-    getUserById,
-    createUser,
-    updateUser,
-    deleteUser
+  getAllUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser,
 };

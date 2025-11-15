@@ -54,4 +54,8 @@ router.route('/eventlocations/:id')
     .put(authMiddleware({ minRole: 'superadmin' }), updateEventLocation)
     .delete(authMiddleware({ minRole: 'superadmin' }), deleteEventLocation);
 
+// Event Management Routes
+const eventRoutes = require('./admin/eventRoutes');
+router.use('/events', eventRoutes);
+
 module.exports = router;

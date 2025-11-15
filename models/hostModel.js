@@ -95,12 +95,11 @@ hostSchema.statics.addMember = async function (hostId, userId, role = "host") {
   }
 
   if (!host.members.includes(userId)) {
-    host.members.push(userId);
+    await host.updateOne({ $addToSet: { members: userId } });
   }
   user.host = hostId;
   user.role = role;
 
-  await host.save();
   await user.save();
 
   return { host, user };
@@ -125,11 +124,10 @@ hostSchema.statics.removeMember = async function (hostId, userId) {
     throw new Error("User is not a member of this host");
   }
 
-  host.members.pull(userId);
+  await host.updateOne({ $pull: { members: userId } });
   user.host = null;
   user.role = "user";
 
-  await host.save();
   await user.save();
 
   return { host, user };
@@ -179,20 +177,16 @@ hostSchema.statics.forceAddMember = async function (
   if (user.host && user.host.toString() !== hostId) {
     const oldHost = await this.findById(user.host).exec();
     if (oldHost) {
-      oldHost.members.pull(userId);
-      await oldHost.save();
+      await oldHost.updateOne({ $pull: { members: userId } });
     }
   }
 
   // Add user to the new host
-  if (!newHost.members.includes(userId)) {
-    newHost.members.push(userId);
-  }
+  await newHost.updateOne({ $addToSet: { members: userId } });
   user.host = hostId;
   user.role = role;
 
   await user.save();
-  await newHost.save();
 
   return { host: newHost, user };
 };

@@ -6,7 +6,9 @@ const {
     createUser,
     updateUser,
     deleteUser,
-    getUserLocationLog
+    getUserLocationLog,
+    createQrUser,
+    updateDailyRegisteredLocation
 } = require('../controllers/Admin/userController');
 const {
     getAllHosts,
@@ -31,12 +33,18 @@ router.route('/users')
     .post(authMiddleware({ minRole: 'superadmin' }), createUser);
 
 router.route('/users/:id')
-    .get(authMiddleware({ minRole: 'superadmin' }), getUserById)
-    .put(authMiddleware({ minRole: 'superadmin' }), updateUser)
+    .get(authMiddleware({ minRole: 'host' }), getUserById)
+    .put(authMiddleware({ minRole: 'host' }), updateUser)
     .delete(authMiddleware({ minRole: 'superadmin' }), deleteUser);
 
 router.route('/users/:id/locationlog')
     .get(authMiddleware({ minRole: 'superadmin' }), getUserLocationLog);
+
+router.route('/users/:id/registerlocation')
+    .put(authMiddleware({ minRole: 'host' }), updateDailyRegisteredLocation);
+
+router.route('/users/qr')
+    .post(authMiddleware({ minRole: 'host' }), createQrUser);
 
 // Host Management Routes
 router.route('/hosts')

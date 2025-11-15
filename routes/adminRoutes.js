@@ -5,7 +5,8 @@ const {
     getUserById,
     createUser,
     updateUser,
-    deleteUser
+    deleteUser,
+    getUserLocationLog
 } = require('../controllers/Admin/userController');
 const {
     getAllHosts,
@@ -33,6 +34,9 @@ router.route('/users/:id')
     .get(authMiddleware({ minRole: 'superadmin' }), getUserById)
     .put(authMiddleware({ minRole: 'superadmin' }), updateUser)
     .delete(authMiddleware({ minRole: 'superadmin' }), deleteUser);
+
+router.route('/users/:id/locationlog')
+    .get(authMiddleware({ minRole: 'superadmin' }), getUserLocationLog);
 
 // Host Management Routes
 router.route('/hosts')

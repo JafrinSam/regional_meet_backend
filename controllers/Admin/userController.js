@@ -1,25 +1,30 @@
-const User = require('../../models/userModel');
+const User = require("../../models/userModel");
+const LocationLog = require("../../models/locationLogModel");
 
 // Get all users
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({}).select('-password');
+    const users = await User.find({}).select("-password");
     res.json(users);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching users', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching users", error: error.message });
   }
 };
 
 // Get a single user by ID
 const getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const user = await User.findById(req.params.id).select("-password");
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
     res.json(user);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching user', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching user", error: error.message });
   }
 };
 
@@ -30,7 +35,7 @@ const createUser = async (req, res) => {
 
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: "User already exists" });
     }
 
     const user = new User({
@@ -48,7 +53,9 @@ const createUser = async (req, res) => {
       role: user.role,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error creating user', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error creating user", error: error.message });
   }
 };
 
@@ -59,7 +66,7 @@ const updateUser = async (req, res) => {
     const user = await User.findById(req.params.id);
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     user.fullname = fullname || user.fullname;
@@ -79,7 +86,9 @@ const updateUser = async (req, res) => {
       role: updatedUser.role,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error updating user', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error updating user", error: error.message });
   }
 };
 
@@ -89,13 +98,30 @@ const deleteUser = async (req, res) => {
     const user = await User.findById(req.params.id);
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     await user.remove();
-    res.json({ message: 'User removed' });
+    res.json({ message: "User removed" });
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting user', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error deleting user", error: error.message });
+  }
+};
+
+// Get location log for a user
+const getUserLocationLog = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const logs = await LocationLog.find({ user: userId }).sort({
+      loggedAt: "asc",
+    });
+    res.json(logs);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching location logs", error: error.message });
   }
 };
 
@@ -105,4 +131,5 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
+  getUserLocationLog,
 };

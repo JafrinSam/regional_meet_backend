@@ -22,9 +22,16 @@ const getAllEvents = async (req, res) => {
       .populate('host', 'name')
       .sort({ date: -1 })
       .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .lean();
 
     const totalEvents = await Event.countDocuments(query);
+
+    for (let event of events) {
+      event.registrations = await RegisteredEvent.find({ event: event._id })
+        .populate('user', 'name email')
+        .lean();
+    }
 
     res.json({
       events,

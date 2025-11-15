@@ -78,7 +78,7 @@ const deleteHost = async (req, res) => {
       return res.status(404).json({ message: 'Host not found' });
     }
 
-    await host.remove();
+    await host.deleteOne();
     res.json({ message: 'Host removed' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting host', error: error.message });

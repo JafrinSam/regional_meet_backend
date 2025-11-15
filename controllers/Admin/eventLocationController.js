@@ -71,7 +71,7 @@ const deleteEventLocation = async (req, res) => {
       return res.status(404).json({ message: 'Event location not found' });
     }
 
-    await location.remove();
+    await location.deleteOne();
     res.json({ message: 'Event location removed' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting event location', error: error.message });
